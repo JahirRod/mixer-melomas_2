@@ -2,103 +2,140 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Mixer Profesional Melomas</title>
   <style>
-    :root { --primary: #00ADB5; --bg-main: #121212; --bg-panel: #1e1e24; --text-main: #eeeeee; }
-    body { font-family: 'Segoe UI', sans-serif; background: var(--bg-main); color: var(--text-main); margin: 0; padding: 15px; }
-    .mixer-board { background: var(--bg-panel); padding: 20px; border-radius: 12px; max-width: 600px; margin: 0 auto; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+    :root { --primary: #00ADB5; --bg-main: #121212; --bg-panel: #1e1e24; --bg-track: #2a2a35; --text-main: #eeeeee; --danger: #FF4C4C; --solo: #F39C12; }
+    body { font-family: sans-serif; background: var(--bg-main); color: var(--text-main); margin: 0; padding: 10px; }
+    .mixer-board { background: var(--bg-panel); padding: 20px; border-radius: 12px; max-width: 600px; margin: 0 auto; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
     h2 { text-align: center; color: var(--primary); margin-top: 0; }
-    select { width: 100%; padding: 12px; background: #2a2a35; color: white; border: 1px solid #444; border-radius: 6px; margin-bottom: 15px; }
-    .controls { display: flex; gap: 10px; margin-bottom: 20px; }
-    button { flex: 1; padding: 15px; background: var(--primary); border: none; border-radius: 6px; font-weight: bold; cursor: pointer; color: white; text-transform: uppercase; }
-    button:disabled { background: #333; cursor: not-allowed; }
-    .track { display: flex; align-items: center; justify-content: space-between; background: #2a2a35; padding: 10px; margin-bottom: 8px; border-radius: 6px; }
-    .track span { font-size: 14px; font-weight: bold; width: 80px; }
-    input[type=range] { width: 100px; }
-    #status { text-align: center; font-size: 12px; color: var(--primary); margin-bottom: 10px; height: 15px; }
+    select { width: 100%; padding: 12px; background: #2a2a35; color: white; border: 1px solid #444; border-radius: 8px; margin-bottom: 15px; }
+    .main-controls { display: flex; gap: 10px; margin-bottom: 15px; }
+    button { flex: 1; padding: 15px; background: var(--primary); border: none; border-radius: 8px; font-weight: bold; color: white; text-transform: uppercase; cursor: pointer; }
+    button:disabled { background: #444; cursor: not-allowed; }
+    .timeline { background: #111; padding: 10px; border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+    #slider { width: 100%; }
+    .track { background: var(--bg-track); padding: 10px; margin-bottom: 8px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; }
+    .controls-ms { display: flex; gap: 5px; }
+    .btn-ms { padding: 5px 10px; background: #111; border: 1px solid #333; color: #fff; border-radius: 4px; cursor: pointer; }
+    .btn-ms.active-mute { background: var(--danger); }
+    .btn-ms.active-solo { background: var(--solo); }
+    .vol-fader { width: 60px; }
   </style>
 </head>
 <body>
 
-  <div class="mixer-board">
-    <h2>MIXER MELOMAS</h2>
-    <select id="songSelector" onchange="initSong()">
-      <option value="" disabled selected>-- Elige Canción --</option>
-      <option value="invencible">Invencible</option>
-      <option value="guapa">Guapa</option>
-    </select>
-    <div id="status">Selecciona una canción</div>
-    <div class="controls">
-      <button id="playBtn" onclick="togglePlay()" disabled>CARGANDO</button>
-      <button id="resetBtn" onclick="stopAll()" disabled>REINICIAR</button>
-    </div>
-    <div id="canalesUI"></div>
+<div class="mixer-board">
+  <h2>MIXER MELOMAS</h2>
+  <select id="songSelector" onchange="initSong()">
+    <option value="" disabled selected>-- Elige Canción --</option>
+    <option value="invencible">Invencible</option>
+    <option value="guapa">Guapa</option>
+  </select>
+  
+  <div id="status" style="text-align: center; color: var(--primary); margin-bottom: 10px;">Selecciona una canción</div>
+
+  <div class="timeline">
+    <span id="curr">0:00</span>
+    <input type="range" id="slider" min="0" max="100" value="0" oninput="seek(this.value)">
+    <span id="tot">0:00</span>
   </div>
 
-  <script>
-    const tracks = ['click', 'drums', 'bass', 'guitar', 'piano', 'other', 'vocals'];
-    const audios = {};
-    let isPlaying = false;
+  <div class="main-controls">
+    <button id="playBtn" onclick="togglePlay()" disabled>CARGANDO</button>
+    <button onclick="stopAll()">RESET</button>
+  </div>
 
-    // Inicializar UI
-    const cont = document.getElementById('canalesUI');
-    tracks.forEach(id => {
-      cont.innerHTML += `
-        <div class="track">
-          <span>${id.toUpperCase()}</span>
-          <audio id="audio-${id}" preload="auto" playsinline></audio>
-          <input type="range" min="0" max="1" step="0.1" value="1" oninput="audios['${id}'].volume = this.value">
+  <div id="canalesUI"></div>
+</div>
+
+<script>
+  const tracks = ['click', 'drums', 'bass', 'guitar', 'piano', 'other', 'vocals'];
+  const audios = {};
+  let isPlaying = false;
+
+  // Crear UI
+  const cont = document.getElementById('canalesUI');
+  tracks.forEach(id => {
+    cont.innerHTML += `
+      <div class="track">
+        <span style="width: 60px;">${id.toUpperCase()}</span>
+        <div class="controls-ms">
+          <button class="btn-ms" onclick="toggleMute('${id}', this)">M</button>
+          <button class="btn-ms" onclick="toggleSolo('${id}', this)">S</button>
         </div>
-      `;
-      audios[id] = document.getElementById('audio-' + id);
+        <input type="range" class="vol-fader" min="0" max="1" step="0.1" value="1" oninput="audios['${id}'].volume = this.value">
+        <audio id="audio-${id}" preload="auto" playsinline></audio>
+      </div>
+    `;
+    audios[id] = document.getElementById('audio-' + id);
+  });
+
+  function initSong() {
+    const song = document.getElementById('songSelector').value;
+    document.getElementById('playBtn').innerText = "CARGANDO...";
+    let loaded = 0;
+    tracks.forEach(id => {
+      audios[id].src = `audio/${song}/${id}.mp3`;
+      audios[id].load();
+      audios[id].oncanplaythrough = () => {
+        loaded++;
+        if(loaded === tracks.length) {
+          document.getElementById('playBtn').disabled = false;
+          document.getElementById('playBtn').innerText = "▶ PLAY";
+          document.getElementById('status').innerText = "Listo";
+        }
+      };
     });
+  }
 
-    function initSong() {
-      const song = document.getElementById('songSelector').value;
-      const status = document.getElementById('status');
-      const btn = document.getElementById('playBtn');
-      
-      status.innerText = "Cargando audio en memoria...";
-      btn.disabled = true;
-      let loadedCount = 0;
-
-      tracks.forEach(id => {
-        audios[id].src = `audio/${song}/${id}.mp3`;
-        audios[id].load();
-        audios[id].oncanplaythrough = () => {
-          loadedCount++;
-          if(loadedCount === tracks.length) {
-            btn.disabled = false;
-            btn.innerText = "▶ PLAY";
-            status.innerText = "Listo para ensayar";
-          }
-        };
-      });
-    }
-
-    function togglePlay() {
-      const btn = document.getElementById('playBtn');
-      if (!isPlaying) {
-        // Disparo asíncrono con compensación de latencia
-        tracks.forEach(id => {
-          audios[id].currentTime = 0;
-          audios[id].play().catch(e => console.error("Error al disparar:", id));
-        });
-        btn.innerText = "⏸ PAUSA";
-      } else {
-        tracks.forEach(id => audios[id].pause());
-        btn.innerText = "▶ PLAY";
-      }
-      isPlaying = !isPlaying;
-      document.getElementById('resetBtn').disabled = false;
-    }
-
-    function stopAll() {
-      tracks.forEach(id => { audios[id].pause(); audios[id].currentTime = 0; });
-      isPlaying = false;
+  function togglePlay() {
+    if (!isPlaying) {
+      tracks.forEach(id => { audios[id].play(); });
+      document.getElementById('playBtn').innerText = "⏸ PAUSA";
+      startInterval();
+    } else {
+      tracks.forEach(id => audios[id].pause());
       document.getElementById('playBtn').innerText = "▶ PLAY";
     }
-  </script>
+    isPlaying = !isPlaying;
+  }
+
+  function stopAll() {
+    tracks.forEach(id => { audios[id].pause(); audios[id].currentTime = 0; });
+    isPlaying = false;
+    document.getElementById('playBtn').innerText = "▶ PLAY";
+  }
+
+  function toggleMute(id, btn) {
+    audios[id].muted = !audios[id].muted;
+    btn.classList.toggle('active-mute');
+  }
+
+  function toggleSolo(id, btn) {
+    btn.classList.toggle('active-solo');
+    const isSolo = btn.classList.contains('active-solo');
+    tracks.forEach(t => { if(t !== id) audios[t].muted = isSolo; });
+  }
+
+  function seek(val) {
+    const time = (val / 100) * audios['click'].duration;
+    tracks.forEach(id => { audios[id].currentTime = time; });
+  }
+
+  function startInterval() {
+    setInterval(() => {
+      const active = audios['click'];
+      if(active.duration) {
+        document.getElementById('slider').value = (active.currentTime / active.duration) * 100;
+        document.getElementById('curr').innerText = format(active.currentTime);
+        document.getElementById('tot').innerText = format(active.duration);
+      }
+    }, 500);
+  }
+
+  function format(s) { return Math.floor(s/60) + ":" + (Math.floor(s%60)+"").padStart(2, '0'); }
+</script>
+
 </body>
 </html>
