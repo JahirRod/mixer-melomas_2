@@ -4,293 +4,79 @@
   <meta charset="UTF-8">
   <title>Mixer de Ensayos Melomas</title>
   <style>
-    :root {
-      --primary: #00ADB5;
-      --primary-hover: #007F86;
-      --bg-main: #121212;
-      --bg-panel: #1e1e24;
-      --bg-track: #2a2a35;
-      --text-main: #eeeeee;
-      --text-muted: #a0a0a0;
-      --danger: #FF4C4C;
-      --solo: #F39C12;
-    }
-
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg-main); color: var(--text-main); padding: 20px; text-align: center; margin: 0; }
-    h2 { margin-bottom: 25px; font-weight: 600; letter-spacing: 1px; color: var(--primary); }
-    .mixer-board { background: var(--bg-panel); padding: 30px; border-radius: 16px; max-width: 750px; margin: 0 auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #333; }
-    
-    select { background: #2a2a35; color: white; padding: 12px; font-size: 16px; border: 1px solid #444; border-radius: 8px; width: 100%; margin-bottom: 20px; outline: none; cursor: pointer; }
-    select:focus { border-color: var(--primary); }
-    
-    .main-controls { display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; }
-    button { background: var(--primary); color: white; border: none; padding: 15px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; transition: all 0.2s ease; text-transform: uppercase; letter-spacing: 1px; }
-    button:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-2px); }
-    button:disabled { background: #444; color: #777; cursor: not-allowed; transform: none; }
-    
-    .btn-reset { background: #333; border: 1px solid #555; }
-    .btn-reset:hover:not(:disabled) { background: #444; }
-
-    #statusMonitor { color: var(--primary); font-size: 14px; margin-bottom: 20px; font-weight: 600; min-height: 20px; }
-
-    .timeline-container { display: none; align-items: center; justify-content: space-between; background: #111; padding: 10px 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #333; }
-    #playbackSlider { -webkit-appearance: none; width: 100%; margin: 0 15px; background: transparent; cursor: pointer; }
-    #playbackSlider::-webkit-slider-runnable-track { width: 100%; height: 8px; background: #333; border-radius: 4px; border: 1px solid #222; }
-    #playbackSlider::-webkit-slider-thumb { height: 16px; width: 16px; border-radius: 50%; background: var(--primary); cursor: pointer; -webkit-appearance: none; margin-top: -4px; box-shadow: 0 0 8px rgba(0, 173, 181, 0.6); }
-    .time-text { font-size: 13px; font-family: monospace; color: var(--text-muted); width: 45px; text-align: center; }
-
-    .mix-tools { display: none; justify-content: flex-end; margin-bottom: 10px; }
-    .btn-tool { background: transparent; border: 1px solid #555; padding: 5px 12px; font-size: 12px; width: auto; color: var(--text-muted); border-radius: 4px; }
-    .btn-tool:hover { background: #333; color: white; }
-
-    .track { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; background: var(--bg-track); padding: 12px 15px; border-radius: 10px; border-left: 5px solid #444; transition: all 0.2s; opacity: 0.5; }
-    .track.has-audio { border-left-color: var(--primary); opacity: 1; }
-    .track-click.has-audio { border-left-color: #F39C12; }
-    .track-vocal.has-audio { border-left-color: #E74C3C; }
-    
-    .track-info { display: flex; align-items: center; width: 25%; text-align: left; }
-    .track-icon { font-size: 18px; margin-right: 10px; }
-    .track-label { font-weight: bold; font-size: 14px; }
-
-    .ms-controls { display: flex; gap: 5px; margin-right: 15px; }
-    .btn-ms { background: #111; color: #777; border: 1px solid #333; width: 32px; height: 32px; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; }
-    .btn-ms:hover:not(:disabled) { background: #333; color: white; }
-    .btn-ms:disabled { opacity: 0.3; cursor: not-allowed; }
-    .btn-mute.active { background: var(--danger); color: white; border-color: var(--danger); box-shadow: 0 0 8px rgba(255,76,76,0.4); }
-    .btn-solo.active { background: var(--solo); color: white; border-color: var(--solo); box-shadow: 0 0 8px rgba(243,156,18,0.4); }
-
-    .fader-container { width: 50%; display: flex; align-items: center; }
-    .fader-icon { font-size: 14px; color: #777; margin: 0 8px; }
-    .vol-display { width: 45px; text-align: right; font-size: 12px; font-family: monospace; color: var(--text-muted); font-weight: bold; }
-    
-    .fader-container input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
-    .fader-container input[type=range]:focus { outline: none; }
-    .fader-container input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #111; border-radius: 3px; border: 1px solid #444; }
-    .fader-container input[type=range]::-webkit-slider-thumb { height: 18px; width: 18px; border-radius: 50%; background: var(--text-main); cursor: pointer; -webkit-appearance: none; margin-top: -7px; box-shadow: 0 0 8px rgba(0,0,0,0.8); }
-    .fader-container input[type=range]::-webkit-slider-thumb:hover { background: var(--primary); }
-    .fader-container input[type=range]:disabled::-webkit-slider-thumb { background: #555; }
-
-    audio { display: none; }
+    :root { --primary: #00ADB5; --primary-hover: #007F86; --bg-main: #121212; --bg-panel: #1e1e24; --bg-track: #2a2a35; --text-main: #eeeeee; --text-muted: #a0a0a0; --danger: #FF4C4C; --solo: #F39C12; }
+    body { font-family: sans-serif; background: var(--bg-main); color: var(--text-main); padding: 20px; text-align: center; margin: 0; }
+    .mixer-board { background: var(--bg-panel); padding: 20px; border-radius: 16px; max-width: 600px; margin: 0 auto; }
+    select { background: #2a2a35; color: white; padding: 10px; width: 100%; border-radius: 8px; margin-bottom: 20px; }
+    button { background: var(--primary); color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
+    .track { display: flex; align-items: center; justify-content: space-between; background: var(--bg-track); padding: 10px; margin-bottom: 8px; border-radius: 8px; }
+    input[type=range] { cursor: pointer; }
   </style>
 </head>
 <body>
 
-  <h2>🎧 Mixer de Ensayos Melomas</h2>
-  
+  <h2>🎧 Mixer Melomas</h2>
   <div class="mixer-board">
-    
     <select id="songSelector" onchange="cargarCancion()">
-      <option value="" disabled selected>-- Selecciona una canción --</option>
+      <option value="" disabled selected>-- Elige Canción --</option>
       <option value="invencible">Invencible</option>
       <option value="guapa">Guapa</option>
     </select>
-
-    <div id="statusMonitor">Mixer preparado. Selecciona una pista.</div>
-
-    <div id="timelineUI" class="timeline-container">
-      <span id="timeCurrent" class="time-text">0:00</span>
-      <input type="range" id="playbackSlider" min="0" max="100" value="0" step="0.1" oninput="seekAudio(this.value)" onmousedown="pauseForSeek()" onmouseup="resumeAfterSeek()" ontouchstart="pauseForSeek()" ontouchend="resumeAfterSeek()">
-      <span id="timeTotal" class="time-text">0:00</span>
-    </div>
-
-    <div class="main-controls">
-      <button id="masterPlay" onclick="togglePlay()" disabled>▶ PLAY</button>
-      <button class="btn-reset" onclick="stopAndReset()" id="resetBtn" disabled>⏹ REINICIAR</button>
-    </div>
-
-    <div class="mix-tools" id="mixTools">
-      <button class="btn-tool" onclick="limpiarMuteSolo()">Limpiar Solos/Mutes</button>
-    </div>
-
+    <div id="statusMonitor">Selecciona una pista para precargar.</div>
+    <button id="masterPlay" onclick="togglePlay()" disabled>▶ PLAY</button>
     <div id="canalesUI"></div>
-
   </div>
 
   <script>
     const trackInfo = [
-      { id: 'click', icon: '⏱', label: 'Click', class: 'track-click' },
-      { id: 'drums', icon: '🥁', label: 'Batería', class: '' },
-      { id: 'bass', icon: '🎸', label: 'Bajo', class: '' },
-      { id: 'guitar', icon: '🎸', label: 'Guitarra', class: '' },
-      { id: 'piano', icon: '🎹', label: 'Teclados', class: '' },
-      { id: 'other', icon: '🎛', label: 'Otros', class: '' },
-      { id: 'vocals', icon: '🎤', label: 'Voz', class: 'track-vocal' }
+      { id: 'click', label: 'Click' }, { id: 'drums', label: 'Batería' },
+      { id: 'bass', label: 'Bajo' }, { id: 'guitar', label: 'Guitarra' },
+      { id: 'piano', label: 'Teclados' }, { id: 'other', label: 'Otros' }, { id: 'vocals', label: 'Voz' }
     ];
 
     let isPlaying = false;
-    let isSeeking = false;
-    let masterInterval = null;
-    const audios = {}; 
-    const states = {};
+    const audios = {};
 
     window.onload = function() {
-      const canalesContenedor = document.getElementById('canalesUI');
-      
+      const contenedor = document.getElementById('canalesUI');
       trackInfo.forEach(t => {
-        canalesContenedor.innerHTML += `
-          <div class="track ${t.class}" id="ui-${t.id}">
-            <div class="track-info"><span class="track-icon">${t.icon}</span><span class="track-label">${t.label}</span></div>
-            <div class="ms-controls">
-              <button class="btn-ms btn-mute" id="mute-${t.id}" onclick="toggleMute('${t.id}')" disabled>M</button>
-              <button class="btn-ms btn-solo" id="solo-${t.id}" onclick="toggleSolo('${t.id}')" disabled>S</button>
-            </div>
+        contenedor.innerHTML += `
+          <div class="track">
+            <span>${t.label}</span>
             <audio id="audio-${t.id}" preload="auto"></audio>
-            <div class="fader-container">
-              <span class="fader-icon">🔈</span>
-              <input type="range" id="fader-${t.id}" min="0" max="1" step="0.05" value="1" oninput="changeVol('${t.id}', this.value)" disabled>
-              <span class="fader-icon">🔊</span>
-            </div>
-            <span class="vol-display" id="vol-val-${t.id}">100%</span>
+            <input type="range" id="vol-${t.id}" min="0" max="1" step="0.1" value="1" oninput="audios['${t.id}'].volume = this.value">
           </div>
         `;
-      });
-
-      trackInfo.forEach(t => {
         audios[t.id] = document.getElementById('audio-' + t.id);
-        states[t.id] = { muted: false, soloed: false, exists: false };
       });
     };
 
     function cargarCancion() {
       const songId = document.getElementById('songSelector').value;
-      if (!songId) return;
-
+      document.getElementById('statusMonitor').innerText = "Cargando archivos...";
+      trackInfo.forEach(t => {
+        audios[t.id].src = `audio/${songId}/${t.id}.mp3`;
+        audios[t.id].load(); 
+      });
       document.getElementById('masterPlay').disabled = false;
-      document.getElementById('resetBtn').disabled = false;
-      document.getElementById('timelineUI').style.display = 'flex';
-      document.getElementById('mixTools').style.display = 'flex';
-      document.getElementById('statusMonitor').innerText = "Cargando stems locales...";
-
-      stopAndReset();
-      limpiarMuteSolo();
-
-      trackInfo.forEach(t => {
-        let a = audios[t.id];
-        let uiRow = document.getElementById('ui-' + t.id);
-        
-        a.src = `audio/${songId}/${t.id}.mp3`;
-        
-        uiRow.classList.add('has-audio');
-        document.getElementById('fader-' + t.id).disabled = false;
-        document.getElementById('mute-' + t.id).disabled = false;
-        document.getElementById('solo-' + t.id).disabled = false;
-        states[t.id].exists = true;
-
-        a.onerror = function() {
-          uiRow.classList.remove('has-audio');
-          document.getElementById('fader-' + t.id).disabled = true;
-          document.getElementById('mute-' + t.id).disabled = true;
-          document.getElementById('solo-' + t.id).disabled = true;
-          states[t.id].exists = false;
-        };
-
-        a.oncanplaythrough = function() {
-          document.getElementById('statusMonitor').innerText = "¡Mezcla lista para tocar!";
-        };
-        
-        a.load();
-      });
-
-      setTimeout(actualizarTimeline, 500);
-    }
-
-    function pauseForSeek() { isSeeking = true; }
-    
-    function seekAudio(percent) {
-      let activeTrack = Object.values(audios).find(a => a.src && !isNaN(a.duration));
-      if(activeTrack) {
-        let newTime = (percent / 100) * activeTrack.duration;
-        trackInfo.forEach(t => {
-          if(states[t.id].exists && audios[t.id].src) {
-            audios[t.id].currentTime = newTime;
-          }
-        });
-        document.getElementById('timeCurrent').innerText = formatoTiempo(newTime);
-      }
-    }
-
-    function resumeAfterSeek() { isSeeking = false; }
-
-    function toggleMute(track) { states[track].muted = !states[track].muted; actualizarMuteSoloUI(); }
-    function toggleSolo(track) { states[track].soloed = !states[track].soloed; actualizarMuteSoloUI(); }
-    
-    function limpiarMuteSolo() {
-      trackInfo.forEach(t => { states[t.id].muted = false; states[t.id].soloed = false; });
-      actualizarMuteSoloUI();
-    }
-
-    function actualizarMuteSoloUI() {
-      let algunSoloActivo = trackInfo.some(t => states[t.id].soloed);
-      trackInfo.forEach(t => {
-        const btnMute = document.getElementById('mute-' + t.id);
-        const btnSolo = document.getElementById('solo-' + t.id);
-        
-        if(states[t.id].muted) btnMute.classList.add('active'); else btnMute.classList.remove('active');
-        if(states[t.id].soloed) btnSolo.classList.add('active'); else btnSolo.classList.remove('active');
-
-        let a = audios[t.id];
-        a.muted = algunSoloActivo ? (states[t.id].soloed ? states[t.id].muted : true) : states[t.id].muted;
-      });
-    }
-
-    function changeVol(track, val) {
-      audios[track].volume = val;
-      document.getElementById('vol-val-' + track).innerText = Math.round(val * 100) + '%';
+      document.getElementById('statusMonitor').innerText = "Listo. Dale Play.";
     }
 
     function togglePlay() {
-      const btnPlay = document.getElementById('masterPlay');
-      if (isPlaying) {
-        trackInfo.forEach(t => { if (states[t.id].exists) audios[t.id].pause(); });
-        btnPlay.innerText = "▶ PLAY";
-        document.getElementById('statusMonitor').innerText = "Pausado";
-        clearInterval(masterInterval);
-      } else {
+      if (!isPlaying) {
+        // RUTINA DE SINCRONIZACIÓN FORZADA
+        const startTime = Date.now() + 200; // Buffer de 200ms para asegurar el arranque
         trackInfo.forEach(t => {
-           let a = audios[t.id];
-           if(states[t.id].exists && a.src) {
-               a.play().catch(e => console.log("Buffering pista:", t.id));
-           }
+          audios[t.id].currentTime = 0;
+          // Disparamos el play en cada pista
+          audios[t.id].play().catch(e => console.error("Error en " + t.id, e));
         });
-        document.getElementById('statusMonitor').innerText = "¡Tocando en vivo! 🎛";
-        btnPlay.innerText = "⏸ PAUSA";
-        masterInterval = setInterval(actualizarTimeline, 100);
+        document.getElementById('masterPlay').innerText = "⏸ PAUSA";
+      } else {
+        trackInfo.forEach(t => audios[t.id].pause());
+        document.getElementById('masterPlay').innerText = "▶ PLAY";
       }
       isPlaying = !isPlaying;
-    }
-
-    function stopAndReset() {
-      trackInfo.forEach(t => {
-        let a = audios[t.id];
-        if(states[t.id].exists && a.src) { a.pause(); a.currentTime = 0; }
-      });
-      isPlaying = false;
-      document.getElementById('masterPlay').innerText = "▶ PLAY";
-      clearInterval(masterInterval);
-      actualizarTimeline();
-      document.getElementById('playbackSlider').value = 0;
-    }
-
-    function actualizarTimeline() {
-      if (isSeeking) return;
-      let activeTrack = Object.values(audios).find(a => a.src && !isNaN(a.duration) && a.duration > 0);
-      if(activeTrack) {
-          let percent = (activeTrack.currentTime / activeTrack.duration) * 100;
-          document.getElementById('playbackSlider').value = percent;
-          document.getElementById('timeCurrent').innerText = formatoTiempo(activeTrack.currentTime);
-          document.getElementById('timeTotal').innerText = formatoTiempo(activeTrack.duration);
-          
-          if(activeTrack.currentTime >= activeTrack.duration) {
-              stopAndReset();
-          }
-      }
-    }
-
-    function formatoTiempo(segundos) {
-      if (isNaN(segundos) || !isFinite(segundos)) return "0:00";
-      let min = Math.floor(segundos / 60);
-      let seg = Math.floor(segundos % 60);
-      return min + ":" + (seg < 10 ? "0" + seg : seg);
     }
   </script>
 </body>
