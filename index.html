@@ -5,22 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Mixer Profesional Melomas</title>
   <style>
-    :root { --primary: #00ADB5; --bg-main: #121212; --bg-panel: #1e1e24; --bg-track: #2a2a35; --text-main: #eeeeee; --danger: #FF4C4C; --solo: #F39C12; }
-    body { font-family: sans-serif; background: var(--bg-main); color: var(--text-main); margin: 0; padding: 10px; }
-    .mixer-board { background: var(--bg-panel); padding: 20px; border-radius: 12px; max-width: 600px; margin: 0 auto; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+    :root { --primary: #00ADB5; --primary-hover: #007F86; --bg-main: #121212; --bg-panel: #1e1e24; --bg-track: #2a2a35; --text-main: #eeeeee; --text-muted: #a0a0a0; --danger: #FF4C4C; --solo: #F39C12; }
+    body { font-family: 'Segoe UI', sans-serif; background: var(--bg-main); color: var(--text-main); padding: 15px; margin: 0; }
+    .mixer-board { background: var(--bg-panel); padding: 20px; border-radius: 16px; max-width: 600px; margin: 0 auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #333; }
     h2 { text-align: center; color: var(--primary); margin-top: 0; }
-    select { width: 100%; padding: 12px; background: #2a2a35; color: white; border: 1px solid #444; border-radius: 8px; margin-bottom: 15px; }
-    .main-controls { display: flex; gap: 10px; margin-bottom: 15px; }
-    button { flex: 1; padding: 15px; background: var(--primary); border: none; border-radius: 8px; font-weight: bold; color: white; text-transform: uppercase; cursor: pointer; }
-    button:disabled { background: #444; cursor: not-allowed; }
-    .timeline { background: #111; padding: 10px; border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
-    #slider { width: 100%; }
-    .track { background: var(--bg-track); padding: 10px; margin-bottom: 8px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; }
-    .controls-ms { display: flex; gap: 5px; }
-    .btn-ms { padding: 5px 10px; background: #111; border: 1px solid #333; color: #fff; border-radius: 4px; cursor: pointer; }
+    select { background: #2a2a35; color: white; padding: 12px; width: 100%; border: 1px solid #444; border-radius: 8px; margin-bottom: 20px; cursor: pointer; }
+    .main-controls { display: flex; gap: 10px; margin-bottom: 20px; }
+    button { flex: 1; padding: 15px; background: var(--primary); border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; text-transform: uppercase; }
+    button:disabled { background: #444; }
+    .timeline { background: #111; padding: 10px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; border: 1px solid #333; }
+    #slider { width: 100%; cursor: pointer; }
+    .track { display: flex; align-items: center; justify-content: space-between; background: var(--bg-track); padding: 10px; margin-bottom: 8px; border-radius: 8px; border-left: 4px solid #444; }
+    .track.active { border-left-color: var(--primary); }
+    .ms-controls { display: flex; gap: 5px; }
+    .btn-ms { background: #111; border: 1px solid #333; color: #fff; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
     .btn-ms.active-mute { background: var(--danger); }
     .btn-ms.active-solo { background: var(--solo); }
-    .vol-fader { width: 60px; }
+    .vol-fader { width: 80px; }
+    #status { text-align: center; font-size: 12px; color: var(--primary); margin-bottom: 10px; }
   </style>
 </head>
 <body>
@@ -33,7 +35,7 @@
     <option value="guapa">Guapa</option>
   </select>
   
-  <div id="status" style="text-align: center; color: var(--primary); margin-bottom: 10px;">Selecciona una canción</div>
+  <div id="status">Selecciona una canción</div>
 
   <div class="timeline">
     <span id="curr">0:00</span>
@@ -52,38 +54,42 @@
 <script>
   const tracks = ['click', 'drums', 'bass', 'guitar', 'piano', 'other', 'vocals'];
   const audios = {};
+  const states = {};
   let isPlaying = false;
 
-  // Crear UI
   const cont = document.getElementById('canalesUI');
   tracks.forEach(id => {
     cont.innerHTML += `
-      <div class="track">
-        <span style="width: 60px;">${id.toUpperCase()}</span>
-        <div class="controls-ms">
-          <button class="btn-ms" onclick="toggleMute('${id}', this)">M</button>
-          <button class="btn-ms" onclick="toggleSolo('${id}', this)">S</button>
+      <div class="track" id="track-${id}">
+        <span style="width: 50px; font-weight:bold">${id.toUpperCase()}</span>
+        <div class="ms-controls">
+          <button class="btn-ms" id="mute-${id}" onclick="toggleMute('${id}')">M</button>
+          <button class="btn-ms" id="solo-${id}" onclick="toggleSolo('${id}')">S</button>
         </div>
         <input type="range" class="vol-fader" min="0" max="1" step="0.1" value="1" oninput="audios['${id}'].volume = this.value">
         <audio id="audio-${id}" preload="auto" playsinline></audio>
       </div>
     `;
     audios[id] = document.getElementById('audio-' + id);
+    states[id] = { muted: false, soloed: false };
   });
 
   function initSong() {
     const song = document.getElementById('songSelector').value;
     document.getElementById('playBtn').innerText = "CARGANDO...";
+    document.getElementById('playBtn').disabled = true;
     let loaded = 0;
+    
     tracks.forEach(id => {
       audios[id].src = `audio/${song}/${id}.mp3`;
       audios[id].load();
       audios[id].oncanplaythrough = () => {
         loaded++;
+        document.getElementById('track-'+id).classList.add('active');
         if(loaded === tracks.length) {
           document.getElementById('playBtn').disabled = false;
           document.getElementById('playBtn').innerText = "▶ PLAY";
-          document.getElementById('status').innerText = "Listo";
+          document.getElementById('status').innerText = "Listo para ensayar";
         }
       };
     });
@@ -91,7 +97,7 @@
 
   function togglePlay() {
     if (!isPlaying) {
-      tracks.forEach(id => { audios[id].play(); });
+      tracks.forEach(id => { audios[id].currentTime = 0; audios[id].play(); });
       document.getElementById('playBtn').innerText = "⏸ PAUSA";
       startInterval();
     } else {
@@ -107,15 +113,19 @@
     document.getElementById('playBtn').innerText = "▶ PLAY";
   }
 
-  function toggleMute(id, btn) {
-    audios[id].muted = !audios[id].muted;
-    btn.classList.toggle('active-mute');
+  function toggleMute(id) {
+    states[id].muted = !states[id].muted;
+    audios[id].muted = states[id].muted;
+    document.getElementById('mute-'+id).classList.toggle('active-mute');
   }
 
-  function toggleSolo(id, btn) {
-    btn.classList.toggle('active-solo');
-    const isSolo = btn.classList.contains('active-solo');
-    tracks.forEach(t => { if(t !== id) audios[t].muted = isSolo; });
+  function toggleSolo(id) {
+    states[id].soloed = !states[id].soloed;
+    document.getElementById('solo-'+id).classList.toggle('active-solo');
+    let anySolo = tracks.some(t => states[t].soloed);
+    tracks.forEach(t => {
+      audios[t].muted = anySolo ? !states[t].soloed : states[t].muted;
+    });
   }
 
   function seek(val) {
@@ -125,17 +135,15 @@
 
   function startInterval() {
     setInterval(() => {
-      const active = audios['click'];
-      if(active.duration) {
-        document.getElementById('slider').value = (active.currentTime / active.duration) * 100;
-        document.getElementById('curr').innerText = format(active.currentTime);
-        document.getElementById('tot').innerText = format(active.duration);
+      if(audios['click'].duration) {
+        document.getElementById('slider').value = (audios['click'].currentTime / audios['click'].duration) * 100;
+        document.getElementById('curr').innerText = format(audios['click'].currentTime);
+        document.getElementById('tot').innerText = format(audios['click'].duration);
       }
     }, 500);
   }
 
   function format(s) { return Math.floor(s/60) + ":" + (Math.floor(s%60)+"").padStart(2, '0'); }
 </script>
-
 </body>
 </html>
